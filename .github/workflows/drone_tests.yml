@@ -18,7 +18,7 @@ jobs:
 
       - name: Start SITL in WSL2
         shell: cmd
-        run: wsl bash -c "~/start_sitl.sh"
+        run: wsl bash -c "/mnt/c/drone_tests/start_sitl.sh"
 
       - name: Install dependencies
         shell: cmd
