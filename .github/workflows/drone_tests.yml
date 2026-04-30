@@ -31,14 +31,12 @@ jobs:
       - name: Install dependencies
         shell: cmd
         run: |
-          C:\drone_tests\.venv_38\Scripts\activate.bat && ^
-          python -m pip install -r requirements.txt
+          C:\drone_tests\.venv_38\Scripts\python.exe -m pip install -r requirements.txt
 
       - name: Run drone tests
         shell: cmd
         run: |
-          C:\drone_tests\.venv_38\Scripts\activate.bat && ^
-          python -m pytest tests/ -v ^
+          C:\drone_tests\.venv_38\Scripts\python.exe -m pytest tests/ -v ^
             --html=report.html ^
             --self-contained-html ^
             --tb=short
