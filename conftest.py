@@ -5,7 +5,7 @@ from pymavlink import mavutil
 import os
 
 SITL_CONNECTION = os.environ.get("SITL_CONNECTION", "udp:172.17.192.1:14551")
-CONNECTION_TIMEOUT = 60
+CONNECTION_TIMEOUT = 120
 HOME_ALT           = 0
 
 
@@ -61,7 +61,7 @@ def vehicle():
         SITL_CONNECTION,
         wait_ready=True,
         timeout=CONNECTION_TIMEOUT,
-        heartbeat_timeout=30,
+        heartbeat_timeout=60,
         source_system=255,
     )
     print(f"[conftest] Connected. Firmware: {v.version}")
