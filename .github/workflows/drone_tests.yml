@@ -40,9 +40,6 @@ jobs:
         env:
           MAVLINK20: "0"
           SITL_CONNECTION: udp:127.0.0.1:14551
-        env:
-          MAVLINK20: "0"
-          SITL_CONNECTION: ${{ env.SITL_CONNECTION }}
 
       - name: Stop SITL
         if: always()
