@@ -23,12 +23,10 @@ jobs:
       - name: Get WSL2 IP and verify SITL
         shell: cmd
         run: |
-          wsl bash -c "ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1 > /tmp/wsl_ip.txt && cat /tmp/wsl_ip.txt"
-          wsl bash -c "cat /tmp/wsl_ip.txt" > wsl_ip.txt
+          wsl bash -c "hostname -I | awk '{print $1}'" > wsl_ip.txt
           set /p WSL_IP=<wsl_ip.txt
-          echo Detected WSL2 IP: %WSL_IP%
+          echo Detected WSL2 IP: [%WSL_IP%]
           echo SITL_CONNECTION=udp:%WSL_IP%:14551>> %GITHUB_ENV%
-          wsl bash -c "nc -zu $(cat /tmp/wsl_ip.txt) 14551 && echo SITL REACHABLE || echo SITL NOT REACHABLE"
 
       - name: Install dependencies
         shell: cmd
