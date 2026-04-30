@@ -23,7 +23,7 @@ jobs:
       - name: Get WSL2 IP and verify SITL
         shell: cmd
         run: |
-          wsl bash -c "hostname -I | awk '{print $1}'" > wsl_ip.txt
+          wsl bash -c "hostname -I | tr -d ' \n\r' | awk '{print $1}'" > wsl_ip.txt
           set /p WSL_IP=<wsl_ip.txt
           echo Detected WSL2 IP: [%WSL_IP%]
           echo SITL_CONNECTION=udp:%WSL_IP%:14551>> %GITHUB_ENV%
