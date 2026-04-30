@@ -4,7 +4,7 @@ from dronekit import connect, VehicleMode
 from pymavlink import mavutil
 import os
 
-SITL_CONNECTION = os.environ.get("SITL_CONNECTION", "udp:172.17.192.1:14551")
+SITL_CONNECTION = os.environ.get("SITL_CONNECTION", "udp:127.0.0.1:14551")
 CONNECTION_TIMEOUT = 120
 HOME_ALT           = 0
 

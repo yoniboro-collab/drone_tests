@@ -36,10 +36,10 @@ jobs:
       - name: Run drone tests
         shell: cmd
         run: |
-          C:\drone_tests\.venv_38\Scripts\python.exe -m pytest tests/ -v ^
-            --html=report.html ^
-            --self-contained-html ^
-            --tb=short
+          wsl bash -c "cd /mnt/c/drone_tests && source /mnt/c/drone_api_tests/.venv_38/Scripts/activate && python -m pytest tests/ -v --html=report.html --self-contained-html --tb=short"
+        env:
+          MAVLINK20: "0"
+          SITL_CONNECTION: udp:127.0.0.1:14551
         env:
           MAVLINK20: "0"
           SITL_CONNECTION: ${{ env.SITL_CONNECTION }}
