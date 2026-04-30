@@ -20,13 +20,13 @@ jobs:
         shell: cmd
         run: wsl bash -c "/mnt/c/drone_tests/start_sitl.sh"
 
-      - name: Get WSL2 IP and verify SITL
+      - name: Get Windows host IP from WSL2
         shell: cmd
         run: |
-          wsl bash -c "hostname -I | tr -d ' \n\r' | awk '{print $1}'" > wsl_ip.txt
-          set /p WSL_IP=<wsl_ip.txt
-          echo Detected WSL2 IP: [%WSL_IP%]
-          echo SITL_CONNECTION=udp:%WSL_IP%:14551>> %GITHUB_ENV%
+          wsl bash -c "ip route show default | awk '{print $3}' | tr -d ' \n\r'" > win_ip.txt
+          set /p WIN_IP=<win_ip.txt
+          echo Detected Windows host IP: [%WIN_IP%]
+          echo SITL_CONNECTION=udp:%WIN_IP%:14551>> %GITHUB_ENV%
 
       - name: Install dependencies
         shell: cmd
@@ -57,4 +57,3 @@ jobs:
         with:
           name: drone-test-report-${{ github.run_number }}
           path: report.html
-          retention-days: 30
