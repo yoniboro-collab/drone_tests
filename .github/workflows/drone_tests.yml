@@ -20,20 +20,21 @@ jobs:
         shell: cmd
         run: wsl bash -c "/mnt/c/drone_tests/start_sitl.sh"
 
+      - name: Get WSL2 IP and verify SITL
+        shell: cmd
+        run: |
+          wsl bash -c "ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1 > /tmp/wsl_ip.txt && cat /tmp/wsl_ip.txt"
+          wsl bash -c "cat /tmp/wsl_ip.txt" > wsl_ip.txt
+          set /p WSL_IP=<wsl_ip.txt
+          echo Detected WSL2 IP: %WSL_IP%
+          echo SITL_CONNECTION=udp:%WSL_IP%:14551>> %GITHUB_ENV%
+          wsl bash -c "nc -zu $(cat /tmp/wsl_ip.txt) 14551 && echo SITL REACHABLE || echo SITL NOT REACHABLE"
+
       - name: Install dependencies
         shell: cmd
         run: |
           C:\drone_tests\.venv_38\Scripts\activate.bat && ^
-          python -m pip install --upgrade pip && ^
-          pip install -r requirements.txt
-
-      - name: Get WSL2 IP
-        shell: cmd
-        run: |
-          wsl bash -c "ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1" > wsl_ip.txt
-          set /p WSL_IP=<wsl_ip.txt
-          echo WSL_IP=%WSL_IP%
-          echo WSL_IP=%WSL_IP%>> %GITHUB_ENV%
+          python -m pip install -r requirements.txt
 
       - name: Run drone tests
         shell: cmd
@@ -45,11 +46,12 @@ jobs:
             --tb=short
         env:
           MAVLINK20: "0"
+          SITL_CONNECTION: ${{ env.SITL_CONNECTION }}
 
       - name: Stop SITL
         if: always()
         shell: cmd
-        run: wsl bash -c "pkill -f arducopter || true"
+        run: wsl bash -c "pkill -f arducopter 2>/dev/null; pkill -f mavproxy 2>/dev/null; exit 0"
 
       - name: Upload test report
         if: always()
