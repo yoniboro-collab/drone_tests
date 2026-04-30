@@ -22,11 +22,11 @@ jobs:
 
       - name: Install dependencies
         shell: cmd
-        run: wsl bash -c "cd /mnt/c/drone_tests && /mnt/c/drone_api_tests/.venv_38/Scripts/python.exe -m pip install -r requirements.txt"
+        run: wsl bash -c "~/drone_venv/bin/pip install -r /mnt/c/drone_tests/requirements.txt"
 
       - name: Run drone tests
         shell: cmd
-        run: wsl bash -c "cd /mnt/c/drone_tests && SITL_CONNECTION=udp:127.0.0.1:14551 MAVLINK20=0 /mnt/c/drone_api_tests/.venv_38/Scripts/python.exe -m pytest tests/ -v --html=report.html --self-contained-html --tb=short"
+        run: wsl bash -c "cd /mnt/c/drone_tests && SITL_CONNECTION=udp:127.0.0.1:14551 MAVLINK20=0 ~/drone_venv/bin/python -m pytest tests/ -v --html=report.html --self-contained-html --tb=short"
 
       - name: Stop SITL
         if: always()
