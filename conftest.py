@@ -2,8 +2,9 @@ import pytest
 import time
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
+import os
 
-SITL_CONNECTION   = "udp:172.17.192.1:14551"  # your WSL2 IP
+SITL_CONNECTION = os.environ.get("SITL_CONNECTION", "udp:172.17.192.1:14551")
 CONNECTION_TIMEOUT = 60
 HOME_ALT           = 0
 

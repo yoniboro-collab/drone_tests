@@ -27,6 +27,14 @@ jobs:
           python -m pip install --upgrade pip && ^
           pip install -r requirements.txt
 
+      - name: Get WSL2 IP
+        shell: cmd
+        run: |
+          wsl bash -c "ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1" > wsl_ip.txt
+          set /p WSL_IP=<wsl_ip.txt
+          echo WSL_IP=%WSL_IP%
+          echo WSL_IP=%WSL_IP%>> %GITHUB_ENV%
+
       - name: Run drone tests
         shell: cmd
         run: |
