@@ -20,7 +20,7 @@ jobs:
         shell: cmd
         run: wsl bash -c "/mnt/c/drone_tests/start_sitl.sh"
 
-     - name: Install dependencies
+      - name: Install dependencies
         shell: cmd
         run: wsl bash -c "cd /mnt/c/drone_tests && /mnt/c/drone_api_tests/.venv_38/Scripts/python.exe -m pip install -r requirements.txt"
 
