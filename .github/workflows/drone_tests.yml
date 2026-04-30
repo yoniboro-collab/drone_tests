@@ -20,26 +20,13 @@ jobs:
         shell: cmd
         run: wsl bash -c "/mnt/c/drone_tests/start_sitl.sh"
 
-      - name: Get Windows host IP from WSL2
+     - name: Install dependencies
         shell: cmd
-        run: |
-          wsl bash -c "ip route | grep default | grep -oP '(?<=via )\d+\.\d+\.\d+\.\d+'" > win_ip.txt
-          set /p WIN_IP=<win_ip.txt
-          echo Detected Windows host IP: [%WIN_IP%]
-          echo SITL_CONNECTION=udp:%WIN_IP%:14551>> %GITHUB_ENV%
-
-      - name: Install dependencies
-        shell: cmd
-        run: |
-          C:\drone_tests\.venv_38\Scripts\python.exe -m pip install -r requirements.txt
+        run: wsl bash -c "cd /mnt/c/drone_tests && /mnt/c/drone_api_tests/.venv_38/Scripts/python.exe -m pip install -r requirements.txt"
 
       - name: Run drone tests
         shell: cmd
-        run: |
-          wsl bash -c "cd /mnt/c/drone_tests && source /mnt/c/drone_api_tests/.venv_38/Scripts/activate && python -m pytest tests/ -v --html=report.html --self-contained-html --tb=short"
-        env:
-          MAVLINK20: "0"
-          SITL_CONNECTION: udp:127.0.0.1:14551
+        run: wsl bash -c "cd /mnt/c/drone_tests && SITL_CONNECTION=udp:127.0.0.1:14551 MAVLINK20=0 /mnt/c/drone_api_tests/.venv_38/Scripts/python.exe -m pytest tests/ -v --html=report.html --self-contained-html --tb=short"
 
       - name: Stop SITL
         if: always()
@@ -52,3 +39,4 @@ jobs:
         with:
           name: drone-test-report-${{ github.run_number }}
           path: report.html
+          retention-days: 30
