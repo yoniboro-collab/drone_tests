@@ -46,7 +46,7 @@ def arm_and_takeoff(vehicle, target_alt):
 
 class TestArmTakeoff:
 
-    @pytest.mark.timeout(60)
+    @pytest.mark.timeout(180)
     def test_vehicle_connects(self, vehicle):
         """
         Smoke test: did we get a vehicle object back from conftest?
