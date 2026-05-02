@@ -48,6 +48,7 @@ class TelemetryLogger:
             run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         self._run_id = run_id
         run_path = os.path.join(self.log_dir, f"run_{run_id}.csv")
+        os.makedirs(self.log_dir, exist_ok=True)
         self._run_file = open(run_path, "w", newline="")
         self._run_writer = csv.DictWriter(self._run_file, fieldnames=self.FIELDS)
         self._run_writer.writeheader()
@@ -63,6 +64,9 @@ class TelemetryLogger:
         test_path = os.path.join(
             self.log_dir, f"run_{self._run_id}__{safe_name}.csv"
         )
+
+        os.makedirs(self.log_dir, exist_ok=True)
+        
         self._per_test_file = open(test_path, "w", newline="")
         self._per_test_writer = csv.DictWriter(
             self._per_test_file, fieldnames=self.FIELDS
