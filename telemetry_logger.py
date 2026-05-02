@@ -60,13 +60,13 @@ class TelemetryLogger:
         self._test_start = time.time()
         self._stop_event.clear()
 
-        safe_name = test_name.replace("::", "__").replace(" ", "_")
+        safe_name = test_name.replace("::", "__").replace(" ", "_").replace("/", "__")
         test_path = os.path.join(
             self.log_dir, f"run_{self._run_id}__{safe_name}.csv"
         )
 
-        os.makedirs(self.log_dir, exist_ok=True)
-        
+        os.makedirs(os.path.dirname(test_path), exist_ok=True)
+
         self._per_test_file = open(test_path, "w", newline="")
         self._per_test_writer = csv.DictWriter(
             self._per_test_file, fieldnames=self.FIELDS
