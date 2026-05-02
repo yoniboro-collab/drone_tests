@@ -52,6 +52,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Docker layers        # ← ADD HERE
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.docker-cache
+          key: docker-ardupilot-sitl-${{ runner.os }}
+          restore-keys: |
+            docker-ardupilot-sitl-
+
+      - name: Pull ArduPilot SITL image  # ← ADD THIS TOO
+        run: |
+          docker load -i /tmp/.docker-cache/ardupilot-sitl.tar 2>/dev/null || true
+          docker pull radarku/ardupilot-sitl
+          mkdir -p /tmp/.docker-cache
+          docker save radarku/ardupilot-sitl -o /tmp/.docker-cache/ardupilot-sitl.tar
+
       - name: Start ArduPilot SITL
         run: docker compose -f docker-compose.yml up -d
 
@@ -65,6 +80,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+	  python3 -m pip install future
           python3 -m pip install dronekit pymavlink pytest pytest-timeout pytest-html pytest-metadata
 
       - name: Run drone tests
