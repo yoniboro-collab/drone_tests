@@ -29,8 +29,8 @@ jobs:
         run: wsl bash -c "~/drone_venv_38/bin/pip install -r /mnt/c/drone_tests/requirements.txt"
 
       - name: Run drone tests
-        shell: cmd
-        run: wsl bash -c "cd /mnt/c/drone_tests && SITL_CONNECTION=udp:127.0.0.1:14551 MAVLINK20=0 ~/drone_venv_38/bin/python -m pytest tests/ -v --html=report.html --self-contained-html --tb=short && cp report.html /mnt/c/actions-runner/_work/drone_tests/drone_tests/report.html"
+      shell: cmd
+      run: wsl bash -c "cd /mnt/c/drone_tests && SITL_MODE=local MAVLINK20=0 ~/drone_venv_38/bin/python -m pytest tests/ -v --html=report.html --self-contained-html --tb=short && cp report.html /mnt/c/actions-runner/_work/drone_tests/drone_tests/report.html"
 
       - name: Stop SITL
         if: always()
@@ -44,3 +44,38 @@ jobs:
           name: drone-test-report-${{ github.run_number }}
           path: report.html
           retention-days: 30
+
+  docker-sitl:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start ArduPilot SITL
+        run: docker compose up -d
+      
+      - name: Wait for SITL to be ready
+        run: sleep 20
+
+      - name: Install dependencies
+      run: |
+        python3 -m pip install dronekit pymavlink pytest pytest-timeout pytest-html pytest-metadata
+
+      - name: Run drone tests
+        env:
+          SITL_MODE: docker
+          MAVLINK20: "1"
+        run: |
+          python3 -m pytest tests/ -v --html=report.html --self-contained-html --tb=short
+
+      - name: Stop SITL
+        if: always()
+        run: docker compose down
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-test-report
+          path: report.html

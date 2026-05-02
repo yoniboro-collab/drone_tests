@@ -3,8 +3,15 @@ import time
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
 from telemetry_logger import TelemetryLogger
+import os
 
-SITL_CONNECTION = "udp:127.0.0.1:14551"
+SITL_MODE = os.environ.get("SITL_MODE", "local")
+
+if SITL_MODE == "docker":
+    SITL_CONNECTION = "tcp:localhost:5760"
+else:
+    SITL_CONNECTION = "udp:127.0.0.1:14551"
+
 CONNECTION_TIMEOUT = 120
 HOME_ALT           = 0
 
