@@ -90,3 +90,20 @@ jobs:
           python3 -m pip install dronekit pymavlink pytest pytest-timeout pytest-html pytest-metadata
 
       - name: Run drone tests
+        env:
+          SITL_MODE: docker
+          MAVLINK20: "1"
+          TELEMETRY_LOG_DIR: /tmp/telemetry_logs
+        run: |
+          python3 -m pytest tests/ -v --html=report.html --self-contained-html --tb=short
+
+      - name: Stop SITL
+        if: always()
+        run: docker compose -f docker-compose.yml down
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-test-report
+          path: report.html
