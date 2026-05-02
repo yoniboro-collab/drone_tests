@@ -1,0 +1,10 @@
+.venv_38/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+report.html
+wsl_ip.txt
+win_ip.txt
+test_connect.py
+write_test.py
