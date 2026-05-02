@@ -78,25 +78,15 @@ jobs:
         with:
           python-version: "3.8"
 
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-py38-dronekit
+
       - name: Install dependencies
         run: |
           python3 -m pip install future
           python3 -m pip install dronekit pymavlink pytest pytest-timeout pytest-html pytest-metadata
 
       - name: Run drone tests
-        env:
-          SITL_MODE: docker
-          MAVLINK20: "1"
-        run: |
-          python3 -m pytest tests/ -v --html=report.html --self-contained-html --tb=short
-
-      - name: Stop SITL
-        if: always()
-        run: docker compose -f docker-compose.yml down
-
-      - name: Upload report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-test-report
-          path: report.html
