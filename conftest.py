@@ -2,7 +2,7 @@ import pytest
 import time
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
-import os
+from telemetry_logger import TelemetryLogger
 
 SITL_CONNECTION = "udp:127.0.0.1:14551"
 CONNECTION_TIMEOUT = 120
@@ -96,6 +96,25 @@ def vehicle():
         v.close()
         print("[conftest] Connection closed.")
 
+@pytest.fixture(scope="session")
+def telemetry(vehicle):
+    """Session-scoped telemetry logger — logs all tests to one combined CSV."""
+    logger = TelemetryLogger(vehicle)
+    logger.start_run()
+    yield logger
+    logger.stop_run()
+    print("[telemetry] Run logging complete.")
+
+
+@pytest.fixture(scope="function", autouse=True)
+def log_telemetry(request, telemetry):
+    """
+    Function-scoped fixture that auto-attaches to every test.
+    autouse=True means you don't need to add it to each test manually.
+    """
+    telemetry.start_test(request.node.nodeid)
+    yield
+    telemetry.stop_test()
 
 @pytest.fixture(scope="function")
 def vehicle_reset(vehicle):

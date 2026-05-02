@@ -8,3 +8,4 @@ wsl_ip.txt
 win_ip.txt
 test_connect.py
 write_test.py
+telemetry_logs/
