@@ -30,7 +30,9 @@ class TelemetryLogger:
         "armed",
     ]
 
-    def __init__(self, vehicle, log_dir="/mnt/c/drone_tests/telemetry_logs"):
+    def __init__(self, vehicle, log_dir=None):
+        if log_dir is None:
+            log_dir = os.environ.get("TELEMETRY_LOG_DIR", "/mnt/c/drone_tests/telemetry_logs")
         self.vehicle = vehicle
         self.log_dir = log_dir
         self._thread = None
