@@ -71,7 +71,7 @@ jobs:
         run: docker compose -f docker-compose.yml up -d
 
       - name: Wait for SITL to be ready
-        run: sleep 20
+        run: sleep 40
 
       - name: Set up Python 3.8
         uses: actions/setup-python@v5
