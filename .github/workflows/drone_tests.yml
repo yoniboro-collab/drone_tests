@@ -19,14 +19,25 @@ jobs:
       - name: Start SITL in WSL2
         shell: cmd
         run: wsl bash -c "/mnt/c/drone_tests/start_sitl.sh"
+        
+      - name: Check SITL status
+        shell: cmd
+        run: wsl bash -c "ps aux | grep -E 'mavproxy|arducopter' | grep -v grep && nc -zu 127.0.0.1 14551 && echo 'PORT OPEN' || echo 'PORT CLOSED'"
 
       - name: Install dependencies
         shell: cmd
         run: wsl bash -c "~/drone_venv_38/bin/pip install -r /mnt/c/drone_tests/requirements.txt"
+      
+      - name: Debug - verify SITL alive
+        shell: cmd
+        run: |
+          wsl bash -c "echo '=== Processes ===' && ps aux | grep -E 'mavproxy|arducopter' | grep -v grep && echo '=== Port check ===' && nc -zu 127.0.0.1 14551 && echo 'PORT 14551 OPEN' || echo 'PORT 14551 CLOSED'"
 
       - name: Run drone tests
         shell: cmd
-        run: wsl bash -c "cd /mnt/c/drone_tests && SITL_CONNECTION=udp:127.0.0.1:14551 MAVLINK20=0 ~/drone_venv_38/bin/python -m pytest tests/ -v --html=report.html --self-contained-html --tb=short"
+        run: wsl bash -c "cd /mnt/c/drone_tests && SITL_CONNECTION=udp:127.0.0.1:14551 MAVLINK20=0 ~/drone_venv_38/bin/python -m pytest tests/ -v --html=report.html --self-contained-
+
+html --tb=short"
 
       - name: Stop SITL
         if: always()
