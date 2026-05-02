@@ -20,9 +20,12 @@ done
 echo "[SITL] SITL ready!"
 
 echo "[SITL] Starting MAVProxy..."
+WIN_IP=$(ip route | grep default | grep -oP '(?<=via )\d+\.\d+\.\d+\.\d+')
+echo "[SITL] Windows host IP: $WIN_IP"
 nohup mavproxy.py --master=tcp:127.0.0.1:5760 \
   --out=udp:127.0.0.1:14550 \
   --out=udp:127.0.0.1:14551 \
+  --out=udp:${WIN_IP}:14552 \
   --non-interactive > /tmp/mavproxy.log 2>&1 &
 
 echo "[SITL] Waiting 45s for MAVProxy to initialize..."
