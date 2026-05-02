@@ -30,12 +30,12 @@ jobs:
 
       - name: Run drone tests
         shell: cmd
-        run: wsl bash -c "cd /mnt/c/drone_tests && SITL_CONNECTION=udp:127.0.0.1:14551 MAVLINK20=0 ~/drone_venv_38/bin/python -m pytest tests/ -v --html=report.html --self-contained-html --tb=short"
+        run: wsl bash -c "cd /mnt/c/drone_tests && SITL_CONNECTION=udp:127.0.0.1:14551 MAVLINK20=0 ~/drone_venv_38/bin/python -m pytest tests/ -v --html=report.html --self-contained-html --tb=short && cp report.html /mnt/c/actions-runner/_work/drone_tests/drone_tests/report.html"
 
       - name: Stop SITL
         if: always()
         shell: cmd
-        run: wsl bash -c "pkill -f arducopter 2>/dev/null; pkill -f mavproxy 2>/dev/null; exit 0"
+        run: wsl bash -c "pkill -f arducopter 2>/dev/null; pkill -f mavproxy 2>/dev/null; exit 0" || exit 0
 
       - name: Upload test report
         if: always()
