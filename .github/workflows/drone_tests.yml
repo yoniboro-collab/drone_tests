@@ -58,6 +58,11 @@ jobs:
       - name: Wait for SITL to be ready
         run: sleep 20
 
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
       - name: Install dependencies
         run: |
           python3 -m pip install dronekit pymavlink pytest pytest-timeout pytest-html pytest-metadata
