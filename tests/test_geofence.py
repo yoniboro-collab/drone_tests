@@ -71,6 +71,7 @@ def fly_north(vehicle, distance_m=FLY_DISTANCE):
     target_lat = vehicle.location.global_relative_frame.lat + (distance_m / 111111)
     target_lon = vehicle.location.global_relative_frame.lon
     target_alt = vehicle.location.global_relative_frame.alt
+    print(target_lat, target_lon, target_alt)
 
     print(f"[fence] Flying north toward ({target_lat:.6f}, {target_lon:.6f})")
     vehicle.simple_goto(

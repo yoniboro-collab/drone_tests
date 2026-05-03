@@ -1,100 +1,134 @@
-🚁 Drone Test Suite — Full Project Summary
+Summary
 
-What we built:
-A complete pytest CI pipeline for testing ArduPilot SITL using DroneKit, running automatically on every git push via GitHub Actions.
+What we built
 
-Project structure:
-C:\drone_tests\
-├── .github\
-│   └── workflows\
-│       └── drone_tests.yml    ← CI pipeline
-├── tests\
-│   ├── test_arm_takeoff.py    ← arm & takeoff tests
-│   └── test_waypoint_mission.py ← waypoint mission tests
-├── conftest.py                ← shared fixtures & battery reset
-├── pytest.ini                 ← pytest config & warning filters
-├── requirements.txt           ← Python dependencies
-├── sitl_params.parm           ← SITL battery/failsafe params
-├── .gitignore                 ← excludes venv, report, cache
-├── .gitattributes             ← enforces LF line endings
-└── README.md                  ← project documentation
-WSL2 files:
-~/drone_venv_38/               ← Linux Python 3.8 venv for CI
-/mnt/c/drone_tests/start_sitl.sh ← auto-start SITL + MAVProxy
-~/sitl_params.parm             ← SITL battery params
-
-Full stack:
-
-SITL: ArduPilot ArduCopter in WSL2 Ubuntu
-MAVProxy: bridges SITL TCP 5760 → UDP ports
-DroneKit: Python MAVLink library
-pytest: test runner with timeout, html report
-QGC / Mission Planner: visual monitoring on Windows
-GitHub Actions: CI on every push
-Self-hosted runner: your Windows machine (YONI) running run.cmd
+A complete drone test suite that runs on two environments — your local WSL2 SITL and a Docker SITL that anyone can use — automatically on every push to main.
 
 
-UDP port layout:
-MAVProxy forwards to:
-├── udp:127.0.0.1:14550  → QGC inside WSL (unused)
-├── udp:127.0.0.1:14551  → pytest/DroneKit inside WSL2
-└── udp:172.17.192.1:14552 → QGC/Mission Planner on Windows
 
-Tests — all 7 passing ✅:
+Project structure \& file roles
 
-test_vehicle_connects
-test_arm_and_reach_altitude
-test_mode_is_guided_after_takeoff
-test_mission_upload
-test_vehicle_visits_all_waypoints
-test_mode_is_auto_during_mission
-test_vehicle_returns_home
+C:\\drone\_tests\\
+
+│
+
+├── .github/workflows/
+
+│   └── drone\_tests.yml      ← CI pipeline — defines two jobs:
+
+│                               1. drone-tests (local WSL2, runs on every push)
+
+│                               2. docker-sitl (Docker, runs on main/manual)
+
+│
+
+├── tests/
+
+│   ├── test\_arm\_takeoff.py       ← Tests: connect, arm, takeoff, guided mode
+
+│   └── test\_waypoint\_mission.py  ← Tests: mission upload, waypoints, AUTO mode, RTL
+
+│
+
+├── conftest.py              ← Shared fixtures:
+
+│                               - vehicle: connects to SITL (local or docker via SITL\_MODE)
+
+│                               - vehicle\_reset: lands/disarms/resets battery before each test
+
+│                               - telemetry: session-wide CSV logger
+
+│                               - log\_telemetry: auto-attaches telemetry to every test
+
+│
+
+├── telemetry\_logger.py      ← Background thread logging GPS, battery, 
+
+│                               mode, speed to CSV at 2Hz
+
+│                               (log dir configurable via TELEMETRY\_LOG\_DIR env var)
+
+│
+
+├── pytest.ini               ← pytest config: timeout=120s, warning filters
+
+│
+
+├── requirements.txt         ← Python dependencies (dronekit, pymavlink, pytest...)
+
+│
+
+├── docker-compose.yml       ← Defines ArduPilot SITL Docker container
+
+│                               (radarku/ardupilot-sitl, port 5760)
+
+│
+
+├── start\_sitl.sh            ← Starts local ArduPilot SITL in WSL2 + MAVProxy
+
+│
+
+├── start\_sitl\_docker.sh     ← Starts Docker SITL locally, polls port 5760
+
+│                               until ready
+
+│
+
+├── sitl\_params.parm         ← ArduPilot params: disables battery failsafes
+
+│                               so tests don't get interrupted
+
+│
+
+└── .gitignore / .gitattributes  ← Excludes venv/cache, enforces LF line endings
 
 
-CI workflow steps:
 
-Checkout code
-Start SITL in WSL2 (start_sitl.sh)
-Debug — verify SITL alive
-Install dependencies (~/drone_venv_38)
-Run drone tests (Linux Python 3.8 inside WSL2)
-Stop SITL
-Upload HTML report as artifact
+Environment switching
+
+SITL\_MODE=local   → connects to udp:127.0.0.1:14551 (your WSL2 SITL)
+
+SITL\_MODE=docker  → connects to tcp:localhost:5760 (Docker container)
 
 
-Key fixes solved:
-ProblemFixpytest not foundpython -m pytestDroneKit DeprecationWarningfilterwarnings in pytest.initest_mission_upload failingUse MISSION_ITEM_INT + MISSION_COUNT checkBattery drainingDisable failsafes via sitl_params.parmSITL clock driftntpdate + wsl --shutdownCI WSL2 not visibleRun run.cmd interactively as your userCI wrong Python (3.12)Created ~/drone_venv_38 with Python 3.8CI platform win32Run pytest via wsl bash -c with Linux PythonMAVProxy dying after scriptUse nohup, remove --daemon flagQGC/MP can't connect during CIAdd --out=udp:${WIN_IP}:14552 to MAVProxy.venv_38 committed to git.gitignore + git rm --cachedShell script CRLF issues.gitattributes enforcing LF
 
-How to start everything manually:
-WSL Terminal 1 — start everything:
-bash/mnt/c/drone_tests/start_sitl.sh
-Windows CMD — run tests:
-cmdcd C:\drone_tests
-.venv_38\Scripts\activate
-python -m pytest tests/ -v --html=report.html --self-contained-html
-QGC — connects automatically on UDP 14552
-Mission Planner — set UDP port 14552, click Connect
+TELEMETRY\_LOG\_DIR=/mnt/c/drone\_tests/telemetry\_logs  ← local default
 
-How to trigger CI:
-cmdcd C:\drone_tests
-git add .
-git commit -m "your message"
-git push
-GitHub Actions runs automatically → results at:
-https://github.com/yoniboro-collab/drone_tests/actions
-
-Runner setup (if restarting machine):
-powershellcd C:\actions-runner
-.\run.cmd
-Keep this window open — runner must be running for CI to work.
-
-Next things to consider:
-
-Make runner start automatically on Windows login (Task Scheduler)
-Add Slack/email notifications on test failure
-Add telemetry CSV logging per test run
-Add geofence breach tests
-Add mode switching tests
+TELEMETRY\_LOG\_DIR=/tmp/telemetry\_logs                 ← docker CI
 
 
-Good luck! 🚁
+
+CI jobs
+
+JobRuns onTriggerRunnerdrone-testsLocal WSL2 SITLEvery pushYour machine (YONI)docker-sitlDocker containerPush to main / manualGitHub ubuntu-latest
+
+
+
+Tests — all 7 passing on both environments ✅
+
+TestWhat it checkstest\_vehicle\_connectsDroneKit can connect to SITLtest\_arm\_and\_reach\_altitudeVehicle arms and reaches target altitudetest\_mode\_is\_guided\_after\_takeoffMode is GUIDED after takeofftest\_mission\_upload5 mission commands stored in ArduPilottest\_vehicle\_visits\_all\_waypointsDrone physically visits all 3 waypointstest\_mode\_is\_auto\_during\_missionMode switches to AUTO during missiontest\_vehicle\_returns\_homeDrone returns and lands at home point
+
+
+
+Key fixes along the way
+
+ProblemFixTelemetry dir not createdos.makedirs(os.path.dirname(path), exist\_ok=True)Telemetry path /mnt/c in DockerTELEMETRY\_LOG\_DIR env varDroneKit needs Python 3.8setup-python@v5 with python-version: "3.8"past module missingpip install future before dronekitMission upload got 0 commandsSwitch from raw MAVLink to DroneKit cmds.upload()MAVLink prefix errorsRemoved recv\_match — was racing with DroneKit's threadDocker image download slowDocker layer cache via actions/cache@v4pip reinstall every runpip cache via actions/cache@v4
+
+
+
+What's next (from your original list)
+
+
+
+Mode switching tests
+
+Geofence breach tests
+
+Task Scheduler for auto-starting runner on Windows login
+
+Slack/email notifications on test failure
+
+
+
+Want to start on any of these? 🚁
+
