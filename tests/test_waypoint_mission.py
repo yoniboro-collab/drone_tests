@@ -17,15 +17,14 @@ def upload_mission(vehicle, waypoints):
 
     master = vehicle._master
 
-    # Set GUIDED mode and clear existing mission before uploading
     vehicle.mode = VehicleMode("GUIDED")
-    time.sleep(1)
+    time.sleep(2)
 
     master.mav.mission_clear_all_send(
         master.target_system,
         master.target_component
     )
-    time.sleep(1)
+    time.sleep(2)
 
     all_cmds = []
 
@@ -53,41 +52,16 @@ def upload_mission(vehicle, waypoints):
         "p1": 0, "p2": 0, "p3": 0, "p4": 0,
     })
 
-    # Send mission count and wait for MISSION_REQUEST handshake
+    # Send count then items with generous delays — no recv_match to avoid
+    # racing with DroneKit's background thread on the shared connection
     master.mav.mission_count_send(
         master.target_system,
         master.target_component,
         len(all_cmds)
     )
+    time.sleep(0.5)
 
-    # Handshake loop — send each item only when ArduPilot requests it
-    items_sent = 0
-    deadline = time.time() + 30
-    while items_sent < len(all_cmds):
-        if time.time() > deadline:
-            raise TimeoutError(f"Mission upload timed out after sending {items_sent} items")
-
-        msg = master.recv_match(
-            type=["MISSION_REQUEST", "MISSION_REQUEST_INT", "MISSION_ACK"],
-            blocking=True,
-            timeout=5
-        )
-
-        if msg is None:
-            print(f"[mission] No request received, retrying count send...")
-            master.mav.mission_count_send(
-                master.target_system,
-                master.target_component,
-                len(all_cmds)
-            )
-            continue
-
-        if msg.get_type() == "MISSION_ACK":
-            print(f"[mission] MISSION_ACK received: {msg.type}")
-            break
-
-        i = msg.seq
-        cmd = all_cmds[i]
+    for i, cmd in enumerate(all_cmds):
         master.mav.mission_item_int_send(
             master.target_system, master.target_component,
             i, cmd["frame"], cmd["command"],
@@ -95,9 +69,9 @@ def upload_mission(vehicle, waypoints):
             cmd["p1"], cmd["p2"], cmd["p3"], cmd["p4"],
             cmd["x"], cmd["y"], cmd["z"],
         )
-        items_sent = i + 1
-        print(f"[mission] Sent item {i+1}/{len(all_cmds)}")
+        time.sleep(0.2)  # generous delay for Docker SITL
 
+    time.sleep(2)  # wait for SITL to process
     print(f"[mission] Uploaded {len(all_cmds)} commands via MISSION_ITEM_INT")
     return len(all_cmds)
 
@@ -138,19 +112,10 @@ class TestWaypointMission:
     def test_mission_upload(self, vehicle_reset):
         expected_count = upload_mission(vehicle_reset, WAYPOINTS)
 
-        master = vehicle_reset._master
-        actual = 0
-        for attempt in range(5):
-            master.mav.mission_request_list_send(
-                master.target_system,
-                master.target_component
-            )
-            msg = master.recv_match(type="MISSION_COUNT", blocking=True, timeout=10)
-            if msg and msg.count == expected_count:
-                actual = msg.count
-                break
-            print(f"[mission] Attempt {attempt + 1}: got {msg.count if msg else 0}, retrying...")
-            time.sleep(2)
+        # Use DroneKit's command download — avoids raw recv_match conflict
+        vehicle_reset.commands.download()
+        vehicle_reset.commands.wait_ready()
+        actual = len(vehicle_reset.commands)
 
         assert actual == expected_count, (
             f"Expected {expected_count} commands, got {actual}"
