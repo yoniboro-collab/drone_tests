@@ -83,14 +83,14 @@ def fly_north(vehicle, distance_m=FLY_DISTANCE):
 
 class TestGeofence:
 
-    @pytest.mark.timeout(300)
+    @pytest.mark.timeout(120)
     def test_geofence_triggers_land(self, vehicle_reset):
         """
         Set a 50m circular fence, fly past it, assert drone lands.
         """
         set_geofence(vehicle_reset, radius=FENCE_RADIUS, action=FENCE_ACTION)
         arm_and_takeoff(vehicle_reset, target_alt=20)
-
+        vehicle_reset.mode = VehicleMode("AUTO")
         # Fly north — will breach the 50m fence
         fly_north(vehicle_reset, distance_m=FLY_DISTANCE)
 
