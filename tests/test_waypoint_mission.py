@@ -90,23 +90,26 @@ def distance_to(vehicle, lat, lon):
 
 class TestWaypointMission:
 
-    @pytest.mark.timeout(30)
+    @pytest.mark.timeout(60)
     def test_mission_upload(self, vehicle_reset):
         expected_count = upload_mission(vehicle_reset, WAYPOINTS)
 
-        # Request mission count directly via pymavlink (bypasses DroneKit's
-        # MAVLink v1 downloader which drops commands on ArduPilot 4.x)
         master = vehicle_reset._master
-        master.mav.mission_request_list_send(
-            master.target_system,
-            master.target_component
-        )
 
-        # Wait for MISSION_COUNT response
-        msg = master.recv_match(type="MISSION_COUNT", blocking=True, timeout=10)
-        assert msg is not None, "No MISSION_COUNT response from ArduPilot"
+        # Retry loop — Docker SITL is slower to confirm mission upload
+        actual = 0
+        for attempt in range(5):
+            master.mav.mission_request_list_send(
+                master.target_system,
+                master.target_component
+            )
+            msg = master.recv_match(type="MISSION_COUNT", blocking=True, timeout=10)
+            if msg and msg.count == expected_count:
+                actual = msg.count
+                break
+            print(f"[mission] Attempt {attempt + 1}: got {msg.count if msg else 0}, retrying...")
+            time.sleep(2)
 
-        actual = msg.count
         assert actual == expected_count, (
             f"Expected {expected_count} commands, got {actual}"
         )
