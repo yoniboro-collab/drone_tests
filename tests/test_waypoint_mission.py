@@ -14,7 +14,19 @@ ACCEPTANCE_RADIUS = 2
 
 def upload_mission(vehicle, waypoints):
     print("[mission] Using MISSION_ITEM_INT uploader")
+
     master = vehicle._master
+
+    # Set GUIDED mode and clear existing mission before uploading
+    vehicle.mode = VehicleMode("GUIDED")
+    time.sleep(1)
+
+    master.mav.mission_clear_all_send(
+        master.target_system,
+        master.target_component
+    )
+    time.sleep(1)
+
     all_cmds = []
 
     home = vehicle.location.global_relative_frame
@@ -41,10 +53,41 @@ def upload_mission(vehicle, waypoints):
         "p1": 0, "p2": 0, "p3": 0, "p4": 0,
     })
 
-    master.mav.mission_count_send(master.target_system, master.target_component, len(all_cmds))
-    time.sleep(0.1)
+    # Send mission count and wait for MISSION_REQUEST handshake
+    master.mav.mission_count_send(
+        master.target_system,
+        master.target_component,
+        len(all_cmds)
+    )
 
-    for i, cmd in enumerate(all_cmds):
+    # Handshake loop — send each item only when ArduPilot requests it
+    items_sent = 0
+    deadline = time.time() + 30
+    while items_sent < len(all_cmds):
+        if time.time() > deadline:
+            raise TimeoutError(f"Mission upload timed out after sending {items_sent} items")
+
+        msg = master.recv_match(
+            type=["MISSION_REQUEST", "MISSION_REQUEST_INT", "MISSION_ACK"],
+            blocking=True,
+            timeout=5
+        )
+
+        if msg is None:
+            print(f"[mission] No request received, retrying count send...")
+            master.mav.mission_count_send(
+                master.target_system,
+                master.target_component,
+                len(all_cmds)
+            )
+            continue
+
+        if msg.get_type() == "MISSION_ACK":
+            print(f"[mission] MISSION_ACK received: {msg.type}")
+            break
+
+        i = msg.seq
+        cmd = all_cmds[i]
         master.mav.mission_item_int_send(
             master.target_system, master.target_component,
             i, cmd["frame"], cmd["command"],
@@ -52,7 +95,8 @@ def upload_mission(vehicle, waypoints):
             cmd["p1"], cmd["p2"], cmd["p3"], cmd["p4"],
             cmd["x"], cmd["y"], cmd["z"],
         )
-        time.sleep(0.05)
+        items_sent = i + 1
+        print(f"[mission] Sent item {i+1}/{len(all_cmds)}")
 
     print(f"[mission] Uploaded {len(all_cmds)} commands via MISSION_ITEM_INT")
     return len(all_cmds)
@@ -95,8 +139,6 @@ class TestWaypointMission:
         expected_count = upload_mission(vehicle_reset, WAYPOINTS)
 
         master = vehicle_reset._master
-
-        # Retry loop — Docker SITL is slower to confirm mission upload
         actual = 0
         for attempt in range(5):
             master.mav.mission_request_list_send(
