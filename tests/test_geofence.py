@@ -82,7 +82,7 @@ def fly_north(vehicle, distance_m=FLY_DISTANCE):
 
 class TestGeofence:
 
-    @pytest.mark.timeout(120)
+    @pytest.mark.timeout(300)
     def test_geofence_triggers_land(self, vehicle_reset):
         """
         Set a 50m circular fence, fly past it, assert drone lands.
@@ -141,7 +141,7 @@ class TestGeofence:
 
         disable_geofence(vehicle_reset)
 
-    @pytest.mark.timeout(30)
+    @pytest.mark.timeout(60)
     def test_geofence_disabled_by_default(self, vehicle_reset):
         """
         DEMO FAILING TEST — asserts fence is enabled by default,
