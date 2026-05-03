@@ -48,16 +48,32 @@ def arm_and_takeoff(vehicle, target_alt=20, timeout=90):
     print(f"[fence] Reached {target_alt}m")
 
 
-def fly_north(vehicle, distance_m=FLY_DISTANCE):
-    """Fly north by distance_m meters."""
-    current = vehicle.location.global_relative_frame
-    delta_lat = distance_m / 111111.0
-    target_lat = current.lat + delta_lat
-    target = LocationGlobalRelative(target_lat, current.lon, current.alt)
-    print(f"[fence] Current: ({current.lat:.6f}, {current.lon:.6f})")
-    print(f"[fence] Target:  ({target_lat:.6f}, {current.lon:.6f})")
-    print(f"[fence] Delta:   {delta_lat:.6f} degrees = ~{distance_m}m north")
-    vehicle.simple_goto(target, airspeed=5)
+def fly_north_velocity(vehicle, speed=3):
+    """
+    Push drone north using continuous velocity commands.
+    Unlike simple_goto, velocity commands cannot be rejected
+    by the fence — the fence triggers mid-flight instead.
+    """
+    master = vehicle._master
+    print(f"[fence] Pushing north at {speed}m/s...")
+    deadline = time.time() + 60  # max 60 seconds of pushing
+    while time.time() < deadline:
+        master.mav.set_position_target_local_ned_send(
+            0,
+            master.target_system,
+            master.target_component,
+            mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+            0b0000111111000111,  # velocity only
+            0, 0, 0,             # position (ignored)
+            speed, 0, 0,         # vx=north, vy=0, vz=0
+            0, 0, 0,             # acceleration (ignored)
+            0, 0                 # yaw (ignored)
+        )
+        time.sleep(0.2)
+        mode = vehicle.mode.name
+        if mode != "GUIDED":
+            print(f"[fence] Mode changed to {mode} — fence triggered!")
+            break
 
 
 class TestGeofence:
@@ -65,22 +81,21 @@ class TestGeofence:
     @pytest.mark.timeout(180)
     def test_geofence_triggers_land(self, vehicle_reset):
         """
-        Arm and takeoff first, then enable 50m fence,
-        fly north 100m past it, assert drone lands.
+        Arm and takeoff, enable 50m fence, push north via
+        velocity commands past fence boundary, assert drone lands.
         """
-        # Arm and takeoff FIRST — fence activates after arming
+        # Arm and takeoff FIRST
         arm_and_takeoff(vehicle_reset, target_alt=20)
 
         # Enable fence AFTER arming
         set_geofence(vehicle_reset, radius=FENCE_RADIUS, action=FENCE_ACTION)
-        time.sleep(2)  # wait for params to apply
+        time.sleep(2)
 
-        # Fly north 100m — will breach the 50m fence
-        fly_north(vehicle_reset, distance_m=FLY_DISTANCE)
-        time.sleep(2)  # give goto time to register
+        # Push north with velocity commands — fence triggers mid-flight
+        fly_north_velocity(vehicle_reset, speed=3)
 
         # Wait for fence breach and landing
-        deadline = time.time() + 120
+        deadline = time.time() + 60
         landed = False
         breach_detected = False
         while time.time() < deadline:
