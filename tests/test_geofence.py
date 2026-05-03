@@ -2,7 +2,6 @@ import pytest
 import time
 from dronekit import VehicleMode
 from pymavlink import mavutil
-from dronekit import LocationGlobalRelative
 
 FENCE_RADIUS = 50       # meters
 FENCE_ACTION = 2        # 2 = Land
@@ -13,7 +12,7 @@ def set_geofence(vehicle, radius=FENCE_RADIUS, action=FENCE_ACTION):
     """Enable a circular geofence around home."""
     master = vehicle._master
     for param, value in [
-        ('FENCE_ENABLE', 1),
+        # ('FENCE_ENABLE', 1),
         ('FENCE_TYPE',   2),       # 2 = circle
         ('FENCE_RADIUS', radius),
         ('FENCE_ACTION', action),
@@ -67,28 +66,17 @@ def fly_north(vehicle, distance_m=FLY_DISTANCE):
     from pymavlink import mavutil
     master = vehicle._master
 
-    while not vehicle.armed:
-        print("Waiting for arming...")
-        vehicle.armed = True
-        time.sleep(1)
-
-    vehicle.mode = "GUIDED"
-
     # Convert distance to approx degrees latitude
     # 1 degree lat ≈ 111,111m
-    # target_lat = vehicle.location.global_relative_frame.lat + (distance_m / 111111)
-    # target_lon = vehicle.location.global_relative_frame.lon
-    # target_alt = vehicle.location.global_relative_frame.alt
-    # 2. Calculate target
-    current_loc = vehicle.location.global_relative_frame
-    target_lat = current_loc.lat + (distance_m / 111111.0)
-    target_point = LocationGlobalRelative(target_lat, current_loc.lon, current_loc.alt)
-    print(target_lat, current_loc.lon, current_loc.alt)
+    target_lat = vehicle.location.global_relative_frame.lat + (distance_m / 111111)
+    target_lon = vehicle.location.global_relative_frame.lon
+    target_alt = vehicle.location.global_relative_frame.alt
+    print(target_lat, target_lon, target_alt)
 
-    print(f"[fence] Flying north toward ({target_lat:.6f}, {current_loc.lon:.6f})")
+    print(f"[fence] Flying north toward ({target_lat:.6f}, {target_lon:.6f})")
     vehicle.simple_goto(
         vehicle.location.global_relative_frame.__class__(
-            target_lat, current_loc.lon, current_loc.alt
+            target_lat, target_lon, target_alt
         )
     )
 
@@ -102,7 +90,7 @@ class TestGeofence:
         """
         set_geofence(vehicle_reset, radius=FENCE_RADIUS, action=FENCE_ACTION)
         arm_and_takeoff(vehicle_reset, target_alt=20)
-        time.sleep(10)
+
         # Fly north — will breach the 50m fence
         fly_north(vehicle_reset, distance_m=FLY_DISTANCE)
 
