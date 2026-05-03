@@ -2,11 +2,12 @@ import pytest
 import time
 from dronekit import VehicleMode
 from pymavlink import mavutil
+from dronekit import Command
 
 FENCE_RADIUS = 50       # meters
 FENCE_ACTION = 2        # 2 = Land
 FLY_DISTANCE = 100      # meters north — will breach the 50m fence
-
+ACCEPTANCE_RADIUS = 2
 
 def set_geofence(vehicle, radius=FENCE_RADIUS, action=FENCE_ACTION):
     """Enable a circular geofence around home."""
@@ -60,6 +61,44 @@ def arm_and_takeoff(vehicle, target_alt=20, timeout=90):
         time.sleep(0.5)
     print(f"[fence] Reached {target_alt}m")
 
+def upload_mission(vehicle, waypoints):
+    print("[mission] Using DroneKit command uploader")
+
+    vehicle.mode = VehicleMode("GUIDED")
+    time.sleep(2)
+
+    cmds = vehicle.commands
+    cmds.clear()
+    time.sleep(1)
+
+    home = vehicle.location.global_relative_frame
+
+    # Takeoff command
+    cmds.add(Command(0, 0, 0,
+                     mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+                     mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+                     0, 0, 0, 0, 0, 0,
+                     home.lat, home.lon, waypoints[0][2]))
+
+    # Waypoints
+    for lat, lon, alt in waypoints:
+        cmds.add(Command(0, 0, 0,
+                         mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+                         mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
+                         0, 0, 0, ACCEPTANCE_RADIUS, 0, 0,
+                         lat, lon, alt))
+
+    # RTL
+    cmds.add(Command(0, 0, 0,
+                     mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+                     mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH,
+                     0, 0, 0, 0, 0, 0, 0, 0, 0))
+
+    cmds.upload()
+    time.sleep(2)
+
+    print(f"[mission] Uploaded {len(cmds)} commands via DroneKit")
+    return len(cmds)
 
 def fly_north(vehicle, distance_m=FLY_DISTANCE):
     """Fly north by sending a velocity command."""
@@ -90,7 +129,7 @@ class TestGeofence:
         """
         set_geofence(vehicle_reset, radius=FENCE_RADIUS, action=FENCE_ACTION)
         arm_and_takeoff(vehicle_reset, target_alt=20)
-        vehicle_reset.mode = VehicleMode("AUTO")
+
         # Fly north — will breach the 50m fence
         fly_north(vehicle_reset, distance_m=FLY_DISTANCE)
 
