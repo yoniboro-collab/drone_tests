@@ -92,7 +92,7 @@ jobs:
       - name: Run drone tests
         env:
           SITL_MODE: docker
-          MAVLINK20: "1"
+          MAVLINK20: "0"
           TELEMETRY_LOG_DIR: /tmp/telemetry_logs
         run: |
           python3 -m pytest tests/ -v --html=report.html --self-contained-html --tb=short
