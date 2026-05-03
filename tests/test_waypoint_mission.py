@@ -11,70 +11,48 @@ WAYPOINTS = [
 ]
 ACCEPTANCE_RADIUS = 2
 
+from dronekit import Command
+import dronekit
+
 
 def upload_mission(vehicle, waypoints):
-    print("[mission] Using MISSION_ITEM_INT uploader")
-
-    master = vehicle._master
+    print("[mission] Using DroneKit command uploader")
 
     vehicle.mode = VehicleMode("GUIDED")
     time.sleep(2)
 
-    master.mav.mission_clear_all_send(
-        master.target_system,
-        master.target_component
-    )
-    time.sleep(2)
-
-    all_cmds = []
+    cmds = vehicle.commands
+    cmds.clear()
+    time.sleep(1)
 
     home = vehicle.location.global_relative_frame
-    all_cmds.append({
-        "frame": mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
-        "command": mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
-        "x": int(home.lat * 1e7), "y": int(home.lon * 1e7),
-        "z": float(waypoints[0][2]),
-        "p1": 0, "p2": 0, "p3": 0, "p4": 0,
-    })
 
+    # Takeoff command
+    cmds.add(Command(0, 0, 0,
+                     mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+                     mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+                     0, 0, 0, 0, 0, 0,
+                     home.lat, home.lon, waypoints[0][2]))
+
+    # Waypoints
     for lat, lon, alt in waypoints:
-        all_cmds.append({
-            "frame": mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
-            "command": mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
-            "x": int(lat * 1e7), "y": int(lon * 1e7), "z": float(alt),
-            "p1": 0, "p2": float(ACCEPTANCE_RADIUS), "p3": 0, "p4": 0,
-        })
+        cmds.add(Command(0, 0, 0,
+                         mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+                         mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
+                         0, 0, 0, ACCEPTANCE_RADIUS, 0, 0,
+                         lat, lon, alt))
 
-    all_cmds.append({
-        "frame": mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
-        "command": mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH,
-        "x": 0, "y": 0, "z": 0,
-        "p1": 0, "p2": 0, "p3": 0, "p4": 0,
-    })
+    # RTL
+    cmds.add(Command(0, 0, 0,
+                     mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+                     mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH,
+                     0, 0, 0, 0, 0, 0, 0, 0, 0))
 
-    # Send count then items with generous delays — no recv_match to avoid
-    # racing with DroneKit's background thread on the shared connection
-    master.mav.mission_count_send(
-        master.target_system,
-        master.target_component,
-        len(all_cmds)
-    )
-    time.sleep(0.5)
+    cmds.upload()
+    time.sleep(2)
 
-    for i, cmd in enumerate(all_cmds):
-        master.mav.mission_item_int_send(
-            master.target_system, master.target_component,
-            i, cmd["frame"], cmd["command"],
-            0, 1,
-            cmd["p1"], cmd["p2"], cmd["p3"], cmd["p4"],
-            cmd["x"], cmd["y"], cmd["z"],
-        )
-        time.sleep(0.2)  # generous delay for Docker SITL
-
-    time.sleep(2)  # wait for SITL to process
-    print(f"[mission] Uploaded {len(all_cmds)} commands via MISSION_ITEM_INT")
-    return len(all_cmds)
-
+    print(f"[mission] Uploaded {len(cmds)} commands via DroneKit")
+    return len(cmds)
 
 def arm_and_start_mission(vehicle, timeout=90):
     vehicle.mode = VehicleMode("GUIDED")
