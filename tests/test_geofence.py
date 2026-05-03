@@ -51,9 +51,12 @@ def arm_and_takeoff(vehicle, target_alt=20, timeout=90):
 def fly_north(vehicle, distance_m=FLY_DISTANCE):
     """Fly north by distance_m meters."""
     current = vehicle.location.global_relative_frame
-    target_lat = current.lat + (distance_m / 111111)
+    delta_lat = distance_m / 111111.0
+    target_lat = current.lat + delta_lat
     target = LocationGlobalRelative(target_lat, current.lon, current.alt)
-    print(f"[fence] Flying north toward ({target_lat:.6f}, {current.lon:.6f})")
+    print(f"[fence] Current: ({current.lat:.6f}, {current.lon:.6f})")
+    print(f"[fence] Target:  ({target_lat:.6f}, {current.lon:.6f})")
+    print(f"[fence] Delta:   {delta_lat:.6f} degrees = ~{distance_m}m north")
     vehicle.simple_goto(target, airspeed=5)
 
 
@@ -62,24 +65,35 @@ class TestGeofence:
     @pytest.mark.timeout(180)
     def test_geofence_triggers_land(self, vehicle_reset):
         """
-        Set a 50m circular fence, fly past it, assert drone lands.
+        Arm and takeoff first, then enable 50m fence,
+        fly north 100m past it, assert drone lands.
         """
-        set_geofence(vehicle_reset, radius=FENCE_RADIUS, action=FENCE_ACTION)
-        time.sleep(1)
+        # Arm and takeoff FIRST — fence activates after arming
         arm_and_takeoff(vehicle_reset, target_alt=20)
+
+        # Enable fence AFTER arming
+        set_geofence(vehicle_reset, radius=FENCE_RADIUS, action=FENCE_ACTION)
+        time.sleep(2)  # wait for params to apply
 
         # Fly north 100m — will breach the 50m fence
         fly_north(vehicle_reset, distance_m=FLY_DISTANCE)
+        time.sleep(2)  # give goto time to register
 
         # Wait for fence breach and landing
         deadline = time.time() + 120
         landed = False
+        breach_detected = False
         while time.time() < deadline:
             alt = vehicle_reset.location.global_relative_frame.alt
             mode = vehicle_reset.mode.name
-            print(f"[fence] alt={alt:.1f}m mode={mode}")
+            pos = vehicle_reset.location.global_relative_frame
+            print(f"[fence] alt={alt:.1f}m mode={mode} lat={pos.lat:.6f}")
 
-            if mode == "LAND" or (alt < 1.0 and not vehicle_reset.armed):
+            if mode == "LAND":
+                breach_detected = True
+                print("[fence] LAND mode triggered — fence breached! ✅")
+
+            if breach_detected and (alt < 1.0 or not vehicle_reset.armed):
                 landed = True
                 print("[fence] Drone landed after fence breach ✅")
                 break
